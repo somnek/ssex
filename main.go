@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/joho/godotenv"
 )
 
@@ -13,14 +15,10 @@ func main() {
 		log.Fatal("error loading .env file", err)
 	}
 
-	signer, err := LoadPrivKey()
-	if err != nil {
-		log.Fatal("failed to laod private key: ", err)
+	p := tea.NewProgram(initialModel())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas tea has failed me: %v\n", err)
+		os.Exit(1)
 	}
-	client := NewSSHClient(signer)
-	output, err := client.RunCmd("ls -l")
-	if err != nil {
-		log.Fatal("failed to run command: ", err)
-	}
-	fmt.Println(output)
+
 }

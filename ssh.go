@@ -17,7 +17,7 @@ type Client struct {
 func LoadPrivKey() (ssh.Signer, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("faild to get user home directory: ", err)
+		return nil, fmt.Errorf("faild to get user home directory: %v", err)
 	}
 
 	key, err := os.ReadFile(home + "/.ssh/id_rsa")
