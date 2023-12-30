@@ -44,7 +44,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "x":
+		case "X":
 			output, err := m.client.RunCmd("ls -l")
 			if err != nil {
 				log.Fatal("failed to run command: ", err)
@@ -58,12 +58,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			input := m.input.Value()
 			output, err := m.client.RunCmd(input)
+
+			m.output = output
+			m.input.SetValue("")
+
 			if err != nil {
 				m.err = errMsg(err)
 				return m, nil
 			}
-			m.output = output
-			m.input.SetValue("")
+
 			return m, nil
 		}
 

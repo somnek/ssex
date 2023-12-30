@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"net"
@@ -14,6 +13,8 @@ type Client struct {
 	client *ssh.Client
 }
 
+// LoadPrivKey loads private key from ~/.ssh/id_rsa
+// and returns ssh.Signer interface
 func LoadPrivKey() (ssh.Signer, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -33,6 +34,8 @@ func LoadPrivKey() (ssh.Signer, error) {
 	return signer, nil
 }
 
+// NewSSHClient creates ssh client with ssh.Signer interface
+// and returns Client struct
 func NewSSHClient(signer ssh.Signer) *Client {
 	user := os.Getenv("USERNAME")
 	host := os.Getenv("HOST")
@@ -42,7 +45,9 @@ func NewSSHClient(signer ssh.Signer) *Client {
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
-		HostKeyCallback: ssh.HostKeyCallback(func(hostname string, remote net.Addr, key ssh.PublicKey) error { return nil }),
+		HostKeyCallback: ssh.HostKeyCallback(
+			func(hostname string, remote net.Addr, key ssh.PublicKey) error { return nil },
+		),
 	}
 
 	client, err := ssh.Dial("tcp", host, config)
@@ -52,10 +57,13 @@ func NewSSHClient(signer ssh.Signer) *Client {
 	return &Client{client: client}
 }
 
+// Close closes ssh client
 func (c *Client) Close() {
 	c.client.Close()
 }
 
+// RunCmd runs command on remote host
+// and returns stdout and stderr
 func (c *Client) RunCmd(command string) (string, error) {
 	session, err := c.client.NewSession()
 	if err != nil {
@@ -63,10 +71,6 @@ func (c *Client) RunCmd(command string) (string, error) {
 	}
 	defer session.Close()
 
-	var b bytes.Buffer
-	session.Stdout = &b
-	if err := session.Run(command); err != nil {
-		return "", fmt.Errorf("failed to run command: %v", err)
-	}
-	return b.String(), nil
+	data, err := session.CombinedOutput(command)
+	return string(data), err
 }
