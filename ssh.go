@@ -1,76 +1,92 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"net"
-	"os"
 
-	"golang.org/x/crypto/ssh"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
-type Client struct {
-	client *ssh.Client
+type sshModel struct {
+	client *Client
+	input  textinput.Model
+	output string
+	err    error
 }
 
-// LoadPrivKey loads private key from ~/.ssh/id_rsa
-// and returns ssh.Signer interface
-func LoadPrivKey() (ssh.Signer, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("faild to get user home directory: %v", err)
-	}
+type errMsg error
 
-	key, err := os.ReadFile(home + "/.ssh/id_rsa")
+// pass host here (username and host are currently hardcoded in .env)
+func initSSHModel() sshModel {
+	signer, err := LoadPrivKey()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load private key: %v", err)
+		log.Fatal("failed to laod private key: ", err)
 	}
+	client := NewSSHClient(signer)
+	t := textinput.New()
+	t.Placeholder = "Enter command"
+	t.Focus()
 
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %v", err)
+	return sshModel{
+		client: client,
+		input:  t,
 	}
-
-	return signer, nil
 }
 
-// NewSSHClient creates ssh client with ssh.Signer interface
-// and returns Client struct
-func NewSSHClient(signer ssh.Signer) *Client {
-	user := os.Getenv("USERNAME")
-	host := os.Getenv("HOST")
-
-	config := &ssh.ClientConfig{
-		User: user,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
-		HostKeyCallback: ssh.HostKeyCallback(
-			func(hostname string, remote net.Addr, key ssh.PublicKey) error { return nil },
-		),
-	}
-
-	client, err := ssh.Dial("tcp", host, config)
-	if err != nil {
-		log.Fatal("failed at dial:", err)
-	}
-	return &Client{client: client}
+func (m sshModel) Init() tea.Cmd {
+	return textinput.Blink
 }
 
-// Close closes ssh client
-func (c *Client) Close() {
-	c.client.Close()
+func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "X":
+			output, err := m.client.RunCmd("ls -l")
+			if err != nil {
+				log.Fatal("failed to run command: ", err)
+			}
+			m.output = output
+			return m, nil
+
+		case "q", "ctrl+c", "esc":
+			return m, tea.Quit
+
+		case "enter":
+			input := m.input.Value()
+			output, err := m.client.RunCmd(input)
+
+			m.output = output
+			m.input.SetValue("")
+
+			if err != nil {
+				m.err = errMsg(err)
+				return m, nil
+			}
+
+			return m, nil
+		}
+
+	case errMsg:
+		m.err = msg
+		return m, nil
+	}
+
+	// input
+	m.input, cmd = m.input.Update(msg)
+	return m, cmd
 }
 
-// RunCmd runs command on remote host
-// and returns stdout and stderr
-func (c *Client) RunCmd(command string) (string, error) {
-	session, err := c.client.NewSession()
-	if err != nil {
-		return "", fmt.Errorf("failed to create session: %v", err)
-	}
-	defer session.Close()
+func (m sshModel) View() string {
 
-	data, err := session.CombinedOutput(command)
-	return string(data), err
+	var b strings.Builder
+	b.WriteString("SSEX\n")
+	b.WriteString(m.input.View())
+	b.WriteString("\n")
+	b.WriteString(m.output)
+	return b.String()
 }
