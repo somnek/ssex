@@ -4,23 +4,34 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/kevinburke/ssh_config"
 )
 
 type profileModel struct {
-	hosts  []*ssh_config.Host
+	hosts  []Host
 	cursor int
 	err    error
 }
 
+type Host struct {
+	Alias        string
+	HostName     string
+	User         string
+	Port         string
+	IdentityFile string
+}
+
 func initialModel() profileModel {
-	hosts := SSHConfig()
-	for _, host := range hosts {
-		fmt.Println(host.String())
+	parsedConfig := ParseSSHConfig()
+	// var hosts []Host
+	for _, block := range parsedConfig {
+		// hosts = append(hosts, Host{
+		// 	Alias: block
+		// })
+		fmt.Println(block.Nodes)
 		fmt.Println("----")
 	}
 	return profileModel{
-		hosts:  hosts,
+		hosts:  []Host{},
 		cursor: 0,
 	}
 }

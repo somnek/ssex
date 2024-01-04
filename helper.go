@@ -77,7 +77,7 @@ func (c *Client) RunCmd(command string) (string, error) {
 	return string(data), err
 }
 
-func SSHConfig() []*ssh_config.Host {
+func ParseSSHConfig() []*ssh_config.Host {
 	f, _ := os.Open(filepath.Join(os.Getenv("HOME"), ".ssh", "config"))
 	cfg, _ := ssh_config.Decode(f)
 	return cfg.Hosts
