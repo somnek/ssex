@@ -38,9 +38,10 @@ func LoadPrivKey() (ssh.Signer, error) {
 
 // NewSSHClient creates ssh client with ssh.Signer interface
 // and returns Client struct
-func NewSSHClient(signer ssh.Signer) *Client {
-	user := os.Getenv("USERNAME")
-	host := os.Getenv("HOST")
+func NewSSHClient(signer ssh.Signer, user, addr string) *Client {
+	// user = os.Getenv("USERNAME")
+	// host = os.Getenv("HOST")
+	log.Println("adress: ", addr)
 
 	config := &ssh.ClientConfig{
 		User: user,
@@ -52,9 +53,11 @@ func NewSSHClient(signer ssh.Signer) *Client {
 		),
 	}
 
-	client, err := ssh.Dial("tcp", host, config)
+	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
-		log.Fatal("failed at dial:", err)
+		fmt.Println("failed at dial:", err)
+		os.Exit(1)
+
 	}
 	return &Client{client: client}
 }

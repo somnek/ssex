@@ -76,6 +76,8 @@ func initialModel() profileModel {
 		),
 	)
 
+	// f.WithTheme()
+
 	// spinner
 	s := spinner.New()
 	s.Spinner = spinner.Points
@@ -119,8 +121,15 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	// completed
 	if m.form.State == huh.StateCompleted {
-		return m, tea.Batch(sshCmd(), m.spinner.Tick)
+		// uncessary, since we only use m.profile here
+		m.profile = Profile{
+			Host: m.form.GetString("Host"),
+			Port: m.form.GetString("Port"),
+			User: m.form.GetString("User"),
+		}
+		return m, tea.Batch(sshCmd(m.profile), m.spinner.Tick)
 	}
 
 	// spinner
@@ -142,7 +151,7 @@ func (m profileModel) View() string {
 	return m.form.View()
 }
 
-func sshCmd() tea.Cmd {
+func sshCmd(profile Profile) tea.Cmd {
 	return func() tea.Msg {
 		signer, err := LoadPrivKey()
 		if err != nil {
@@ -150,7 +159,9 @@ func sshCmd() tea.Cmd {
 				fmt.Errorf("failed to load private key: %v", err),
 			)
 		}
-		client := NewSSHClient(signer)
+
+		address := fmt.Sprintf("%s:%s", profile.Host, profile.Port)
+		client := NewSSHClient(signer, profile.User, address)
 		return connectionEstablishedMsg{
 			client: client,
 		}
