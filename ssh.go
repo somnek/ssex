@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
