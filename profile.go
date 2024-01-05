@@ -45,10 +45,12 @@ func initialModel() profileModel {
 				Validate(func(s string) error {
 					if s == "" {
 						return errors.New("port is required")
+					} else if !IsNumber(s) {
+						return errors.New("port must be a number")
 					}
 					return nil
 				}).
-				Description("Specify the port number for the remote server:"),
+				Description("Port to connect to on the remote host: (default is 22)"),
 			huh.NewInput().
 				Value(&p.User).
 				Title("User").
@@ -60,7 +62,7 @@ func initialModel() profileModel {
 					}
 					return nil
 				}).
-				Description("Provide the user for accessing the remote server:"),
+				Description("Specifies the user to log in as on the remote machine:"),
 		),
 	)
 
