@@ -4,38 +4,50 @@ import (
 	"log"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type sshModel struct {
-	client *Client
-	input  textinput.Model
-	output string
-	err    error
+	client  *Client
+	input   textinput.Model
+	output  string
+	spinner spinner.Model
+	err     error
 }
 
 type errMsg error
 
 // pass host here (username and host are currently hardcoded in .env)
 func initSSHModel() sshModel {
+	// ssh
 	signer, err := LoadPrivKey()
 	if err != nil {
 		log.Fatal("failed to laod private key: ", err)
 	}
 	client := NewSSHClient(signer)
+
+	// input
 	t := textinput.New()
 	t.Placeholder = "Enter command"
 	t.Focus()
 
+	// spinner
+	s := spinner.New()
+	s.Spinner = spinner.Points
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+
 	return sshModel{
-		client: client,
-		input:  t,
+		client:  client,
+		input:   t,
+		spinner: s,
 	}
 }
 
 func (m sshModel) Init() tea.Cmd {
-	return textinput.Blink
+	return m.spinner.Tick
 }
 
 func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -77,7 +89,11 @@ func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// input
 	m.input, cmd = m.input.Update(msg)
-	return m, cmd
+
+	// spinner
+	var cmdSpinner tea.Cmd
+	m.spinner, cmdSpinner = m.spinner.Update(msg)
+	return m, tea.Batch(cmd, cmdSpinner)
 }
 
 func (m sshModel) View() string {
@@ -87,5 +103,7 @@ func (m sshModel) View() string {
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
 	b.WriteString(m.output)
+	b.WriteString("\n")
+	b.WriteString(m.spinner.View())
 	return b.String()
 }

@@ -41,7 +41,7 @@ func initialModel() profileModel {
 				Value(&p.Port).
 				Title("Port").
 				Key("Port").
-				Placeholder("e.g 22 (default)").
+				Placeholder("e.g 12345").
 				Validate(func(s string) error {
 					if s == "" {
 						return errors.New("port is required")
@@ -50,7 +50,7 @@ func initialModel() profileModel {
 					}
 					return nil
 				}).
-				Description("Port to connect to on the remote host: (default is 22)"),
+				Description("Port to connect to on the remote host:"),
 			huh.NewInput().
 				Value(&p.User).
 				Title("User").
@@ -74,7 +74,10 @@ func initialModel() profileModel {
 }
 
 func (m profileModel) Init() tea.Cmd {
-	return m.form.Init()
+	return tea.Batch(
+		m.form.Init(),
+		tea.EnterAltScreen,
+	)
 }
 
 func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -95,26 +98,23 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	}
+
+	if m.form.State == huh.StateCompleted {
+		var newModel sshModel
+		return initSSHModel(), newModel.Init()
+	}
+
 	return m, cmd
 }
 
 func (m profileModel) View() string {
-	// move this part to Update to check if form is completed
-	if m.form.State == huh.StateCompleted {
-		host := m.form.GetString("Host")
-		port := m.form.GetString("Port")
-		user := m.form.GetString("User")
-		return "\n" + host + "\n" + port + "\n" + user
-	}
 	return m.form.View()
 }
 
-// parsedConfig := ParseSSHConfig()
-// var hosts []Host
-// for _, block := range parsedConfig {
-// 	hosts = append(hosts, Host{
-// 		Alias: block,
-// 	})
-// 	fmt.Println(block.Nodes)
-// 	fmt.Println("----")
+// // move this part to Update to check if form is completed
+// if m.form.State == huh.StateCompleted {
+// 	host := m.form.GetString("Host")
+// 	port := m.form.GetString("Port")
+// 	user := m.form.GetString("User")
+// 	return "\n" + host + "\n" + port + "\n" + user
 // }
