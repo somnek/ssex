@@ -2,10 +2,17 @@ package main
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 )
+
+type connectionEstablishedMsg struct {
+	client *Client
+}
 
 type Profile struct {
 	Host         string
@@ -18,11 +25,14 @@ type profileModel struct {
 	form    *huh.Form // huh.Form is a tea.Model
 	err     error
 	profile Profile
+	spinner spinner.Model
+	client  *Client
 }
 
 func initialModel() profileModel {
 	var p Profile
 
+	// form
 	f := huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
@@ -66,9 +76,15 @@ func initialModel() profileModel {
 		),
 	)
 
+	// spinner
+	s := spinner.New()
+	s.Spinner = spinner.Points
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+
 	return profileModel{
 		form:    f,
 		profile: p,
+		spinner: s,
 	}
 
 }
@@ -92,29 +108,51 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "X":
-			return initSSHModel(), nil
 		case "ctrl+c":
 			return m, tea.Quit
 		}
+	case connectionEstablishedMsg:
+		var newModel sshModel
+		return initSSHModel(msg.client), newModel.Init()
+	case spinner.TickMsg:
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	}
 
 	if m.form.State == huh.StateCompleted {
-		var newModel sshModel
-		return initSSHModel(), newModel.Init()
+		return m, tea.Batch(sshCmd(), m.spinner.Tick)
 	}
 
-	return m, cmd
+	// spinner
+	var cmdSpinner tea.Cmd
+	m.spinner, cmdSpinner = m.spinner.Update(msg)
+	return m, tea.Batch(cmd, cmdSpinner)
 }
 
 func (m profileModel) View() string {
+	if m.form.State == huh.StateCompleted {
+		return fmt.Sprintf(
+			"%s Connecting to %s:%s as %s...",
+			m.spinner.View(),
+			m.form.GetString("Host"),
+			m.form.GetString("Port"),
+			m.form.GetString("User"),
+		)
+	}
 	return m.form.View()
 }
 
-// // move this part to Update to check if form is completed
-// if m.form.State == huh.StateCompleted {
-// 	host := m.form.GetString("Host")
-// 	port := m.form.GetString("Port")
-// 	user := m.form.GetString("User")
-// 	return "\n" + host + "\n" + port + "\n" + user
-// }
+func sshCmd() tea.Cmd {
+	return func() tea.Msg {
+		signer, err := LoadPrivKey()
+		if err != nil {
+			return errMsg(
+				fmt.Errorf("failed to load private key: %v", err),
+			)
+		}
+		client := NewSSHClient(signer)
+		return connectionEstablishedMsg{
+			client: client,
+		}
+	}
+}

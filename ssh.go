@@ -20,14 +20,7 @@ type sshModel struct {
 
 type errMsg error
 
-// pass host here (username and host are currently hardcoded in .env)
-func initSSHModel() sshModel {
-	// ssh
-	signer, err := LoadPrivKey()
-	if err != nil {
-		log.Fatal("failed to laod private key: ", err)
-	}
-	client := NewSSHClient(signer)
+func initSSHModel(client *Client) sshModel {
 
 	// input
 	t := textinput.New()
