@@ -49,21 +49,21 @@ func initialModel() profileModel {
 					}
 					return nil
 				}).
-				Description("Enter the hostname or IP address of the remote server:"),
+				Description("Enter the hostname or IP address of the remote server:").
+				Prompt("$ "),
 			huh.NewInput().
 				Value(&p.Port).
 				Title("Port").
 				Key("Port").
 				Placeholder("e.g 12345").
 				Validate(func(s string) error {
-					if s == "" {
-						return errors.New("port is required")
-					} else if !IsNumber(s) {
+					if s != "" && !IsNumber(s) {
 						return errors.New("port must be a number")
 					}
 					return nil
 				}).
-				Description("Port to connect to on the remote host:"),
+				Description("Port to connect to on the remote host:").
+				Prompt("$ "),
 			huh.NewInput().
 				Value(&p.User).
 				Title("User").
@@ -75,11 +75,11 @@ func initialModel() profileModel {
 					}
 					return nil
 				}).
-				Description("Specifies the user to log in as on the remote machine:"),
+				Description("Specifies the user to log in as on the remote machine:").
+				Prompt("$ "),
 		),
 	)
-
-	// f.WithTheme()
+	f.WithTheme(huh.ThemeCatppuccin())
 
 	// spinner
 	s := spinner.New()
@@ -155,9 +155,17 @@ func (m profileModel) View() string {
 			sb.WriteString(styleConnectionError.Render(m.err.Error()))
 		}
 
-		hostRender := styleHost.Render(m.form.GetString("Host"))
-		portRender := stylePort.Render(m.form.GetString("Port"))
-		userRender := styleUser.Render(m.form.GetString("User"))
+		host := m.form.GetString("Host")
+		port := m.form.GetString("Port")
+		user := m.form.GetString("User")
+
+		if port == "" {
+			// only for display purpose
+			port = "22"
+		}
+		hostRender := styleHost.Render(host)
+		portRender := stylePort.Render(port)
+		userRender := styleUser.Render(user)
 
 		sb.WriteString(
 			fmt.Sprintf(
@@ -183,8 +191,8 @@ func sshCmd(profile Profile) tea.Cmd {
 			)
 		}
 
-		address := fmt.Sprintf("%s:%s", profile.Host, profile.Port)
-		client, err := NewSSHClient(signer, profile.User, address)
+		// address := fmt.Sprintf("%s:%s", profile.Host, profile.Port)
+		client, err := NewSSHClient(signer, profile.User, profile.Host, profile.Port)
 		if err != nil {
 			return errMsg(
 				fmt.Errorf("failed to create ssh client: %v", err),
@@ -209,7 +217,7 @@ func buildTitle() string {
 	sb.WriteString(styleChar.Background(lipgloss.Color(c800)).Render("E"))
 	sb.WriteString(styleChar.Background(lipgloss.Color(c900)).Render("X"))
 	sb.WriteString("\n")
-	sb.WriteString(styleLine.Render(strings.Repeat("_", 56)))
+	sb.WriteString(styleLine.Render(strings.Repeat("─", 56)))
 	sb.WriteString("\n\n")
 
 	return sb.String()

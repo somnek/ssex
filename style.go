@@ -33,7 +33,7 @@ var (
 	styleApp = lipgloss.NewStyle().
 			Padding(1, 2)
 	styleCommand = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("0")).
+			Foreground(lipgloss.Color("232")).
 			Background(lipgloss.Color(uranianBlue)).
 			Bold(true)
 	styleHost = lipgloss.NewStyle().

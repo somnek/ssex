@@ -37,7 +37,7 @@ func LoadPrivKey() (ssh.Signer, error) {
 
 // NewSSHClient creates ssh client with ssh.Signer interface
 // and returns Client struct
-func NewSSHClient(signer ssh.Signer, user, addr string) (*Client, error) {
+func NewSSHClient(signer ssh.Signer, user, host, port string) (*Client, error) {
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -47,6 +47,12 @@ func NewSSHClient(signer ssh.Signer, user, addr string) (*Client, error) {
 			func(hostname string, remote net.Addr, key ssh.PublicKey) error { return nil },
 		),
 	}
+
+	// default to port 22
+	if port == "" {
+		port = "22"
+	}
+	addr := fmt.Sprintf("%s:%s", host, port)
 
 	client, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
