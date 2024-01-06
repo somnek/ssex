@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,6 +14,8 @@ import (
 type connectionEstablishedMsg struct {
 	client *Client
 }
+
+type connectionErrorMsg error
 
 type Profile struct {
 	Host         string
@@ -39,7 +42,7 @@ func initialModel() profileModel {
 				Value(&p.Host).
 				Title("Host").
 				Key("Host").
-				Placeholder("e.g github.com").
+				Placeholder("e.g 192.149.252.76").
 				Validate(func(s string) error {
 					if s == "" {
 						return errors.New("host is required")
@@ -119,6 +122,9 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
+	case connectionErrorMsg:
+		m.err = msg
+		// ask user to press something to restart form
 	}
 
 	// completed
@@ -139,16 +145,33 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m profileModel) View() string {
+	var sb strings.Builder
+
+	title := buildTitle()
+	sb.WriteString(title)
+
 	if m.form.State == huh.StateCompleted {
-		return fmt.Sprintf(
-			"%s Connecting to %s:%s as %s...",
-			m.spinner.View(),
-			m.form.GetString("Host"),
-			m.form.GetString("Port"),
-			m.form.GetString("User"),
+		if m.err != nil {
+			sb.WriteString(styleConnectionError.Render(m.err.Error()))
+		}
+
+		hostRender := styleHost.Render(m.form.GetString("Host"))
+		portRender := stylePort.Render(m.form.GetString("Port"))
+		userRender := styleUser.Render(m.form.GetString("User"))
+
+		sb.WriteString(
+			fmt.Sprintf(
+				"%s Connecting to %s:%s as %s...",
+				m.spinner.View(),
+				hostRender,
+				portRender,
+				userRender,
+			),
 		)
+		return styleApp.Render(sb.String())
 	}
-	return m.form.View()
+
+	return styleApp.Render(sb.String() + m.form.View())
 }
 
 func sshCmd(profile Profile) tea.Cmd {
@@ -161,9 +184,33 @@ func sshCmd(profile Profile) tea.Cmd {
 		}
 
 		address := fmt.Sprintf("%s:%s", profile.Host, profile.Port)
-		client := NewSSHClient(signer, profile.User, address)
+		client, err := NewSSHClient(signer, profile.User, address)
+		if err != nil {
+			return errMsg(
+				fmt.Errorf("failed to create ssh client: %v", err),
+			)
+		}
+
 		return connectionEstablishedMsg{
 			client: client,
 		}
 	}
+}
+
+func buildTitle() string {
+	sb := strings.Builder{}
+	styleChar := lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Bold(true)
+	styleLine := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+
+	sb.WriteString(strings.Repeat(" ", 25))
+	sb.WriteString(styleChar.Background(lipgloss.Color(c500)).Render("S"))
+	sb.WriteString(styleChar.Background(lipgloss.Color(c600)).Render("S"))
+	sb.WriteString(styleChar.Background(lipgloss.Color(c700)).Render("H"))
+	sb.WriteString(styleChar.Background(lipgloss.Color(c800)).Render("E"))
+	sb.WriteString(styleChar.Background(lipgloss.Color(c900)).Render("X"))
+	sb.WriteString("\n")
+	sb.WriteString(styleLine.Render(strings.Repeat("_", 56)))
+	sb.WriteString("\n\n")
+
+	return sb.String()
 }
