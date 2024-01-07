@@ -90,7 +90,7 @@ func initialModel() profileModel {
 	// spinner
 	s := spinner.New()
 	s.Spinner = spinner.Points
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(c100))
 
 	return profileModel{
 		form:    f,
@@ -245,7 +245,6 @@ func buildTitle(width int) string {
         padding := strings.Repeat(" ", (width/2) - 5)
         b.WriteString(padding)
     }
-	// b.WriteString(strings.Repeat(" ", width/2))
 	b.WriteString(styleChar.Background(lipgloss.Color(c500)).Render("S"))
 	b.WriteString(styleChar.Background(lipgloss.Color(c600)).Render("S"))
 	b.WriteString(styleChar.Background(lipgloss.Color(c700)).Render("E"))

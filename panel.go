@@ -1,15 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
-	"github.com/alecthomas/chroma/v2/quick"
+	"github.com/alecthomas/chroma/quick"
 	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type sshModel struct {
@@ -17,7 +16,6 @@ type sshModel struct {
 	command string // executed command
 	input   textinput.Model
 	output  string
-	spinner spinner.Model
 	height  int
 	width  int
 	help    help.Model
@@ -34,11 +32,6 @@ func initSSHModel(client *Client, height, width int) sshModel {
 	t.Placeholder = "Enter command"
 	t.Focus()
 
-	// spinner
-	s := spinner.New()
-	s.Spinner = spinner.Pulse
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(cadetGray))
-
 	return sshModel{
 		keys:    DefaultKeyMap,
 		help:    help.New(),
@@ -46,12 +39,11 @@ func initSSHModel(client *Client, height, width int) sshModel {
 		height:  height,
 		width:  width,
 		input:   t,
-		spinner: s,
 	}
 }
 
 func (m sshModel) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, textinput.Blink)
+	return textinput.Blink
 }
 
 func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -84,7 +76,8 @@ func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			input := m.input.Value()
 			output, err := m.client.RunCmd(input)
 
-			m.output = output
+			// m.output = output
+            m.output = buildOutput(output, m.height)
 			m.command = input
 			m.input.SetValue("")
 
@@ -104,11 +97,7 @@ func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// input
 	m.input, cmd = m.input.Update(msg)
-
-	// spinner
-	var cmdSpinner tea.Cmd
-	m.spinner, cmdSpinner = m.spinner.Update(msg)
-	return m, tea.Batch(cmd, cmdSpinner)
+	return m, cmd
 }
 
 func (m sshModel) View() string {
@@ -125,13 +114,29 @@ func (m sshModel) View() string {
 		b.WriteString(commandLeft + " " + m.command + "\n\n")
 	}
 	// new writer
-	ob := strings.Builder{}
-	quick.Highlight(&ob, m.output, "actionscript 3", "terminal16m", "friendly")
-	b.WriteString(ob.String())
-	b.WriteString("\n\n")
+    if m.output != ""{
+        // output := buildOutput(m.output, m.height)
+        // b.WriteString(output)
+        b.WriteString(m.output)
+        b.WriteString("\n\n")
+    }
 
-	b.WriteString(m.spinner.View())
 	buildEmptyLine(&b, m.height)
 	b.WriteString(m.help.View(m.keys))
 	return styleApp.Render(b.String())
+}
+
+func buildOutput(output string, height int) string{
+	ob := strings.Builder{}
+	quick.Highlight(&ob, output, "actionscript 3", "terminal16m", "friendly")
+
+    // trim long output
+    lines := strings.Split(ob.String(), "\n")
+    if len(lines) > height - 10{
+        truncText := fmt.Sprintf("... %d more lines truncated ...", len(lines) - (height+10))
+        lines = lines[:height-10]
+        return strings.Join(lines, "\n") + "\n" + truncText
+    }
+
+    return ob.String()
 }

@@ -9,29 +9,31 @@ type KeyMap struct {
 	Quit       key.Binding
 	Next       key.Binding
 	Back       key.Binding
-	ToggleHelp key.Binding
+    Clear       key.Binding
 }
 
 // DefaultKeyMap is the default key map for the application.
 var DefaultKeyMap = KeyMap{
-	Quit:       key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 	Next:       key.NewBinding(key.WithKeys("enter", "tab"), key.WithHelp("enter", "next")),
 	Back:       key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift-tab", "back")),
-	ToggleHelp: key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+	Quit:       key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
+	Clear:       key.NewBinding(key.WithKeys("ctrl+u"), key.WithHelp("ctrl+u", "clear")),
 }
 
 // ShortHelp returns a quick help menu.
 func (k KeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
+        k.Next,
+        k.Back,
 		k.Quit,
-		k.ToggleHelp,
+        k.Clear,
 	}
 }
 
 // FullHelp returns all help options in a more detailed view.
 func (k KeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Quit, k.ToggleHelp},
 		{k.Next, k.Back},
+		{k.Quit, k.Clear},
 	}
 }
