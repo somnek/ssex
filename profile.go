@@ -6,17 +6,24 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 )
 
+type state int
+type connectionErrorMsg error
+
+const (
+	formState state = iota
+	connectingState
+)
+
 type connectionEstablishedMsg struct {
 	client *Client
 }
-
-type connectionErrorMsg error
 
 type Profile struct {
 	Host         string
@@ -29,9 +36,10 @@ type profileModel struct {
 	client  *Client
 	form    *huh.Form // huh.Form is a tea.Model
 	profile Profile
+	state   state
 	spinner spinner.Model
 	height  int
-	width  int
+	width   int
 	help    help.Model
 	keys    KeyMap
 	err     error
@@ -95,6 +103,7 @@ func initialModel() profileModel {
 	return profileModel{
 		form:    f,
 		profile: p,
+		state:   formState,
 		spinner: s,
 		help:    help.New(),
 		keys:    DefaultKeyMap,
@@ -123,8 +132,8 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.width = msg.Width
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c":
+		switch {
+		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
 		}
 	case connectionEstablishedMsg:
@@ -146,6 +155,12 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Port: m.form.GetString("Port"),
 			User: m.form.GetString("User"),
 		}
+
+		m.state = connectingState
+		m.keys.Back.Unbind()
+		m.keys.Next.Unbind()
+		m.keys.Clear.Unbind()
+		m.keys.Cancel.SetEnabled(true)
 		return m, tea.Batch(sshCmd(m.profile), m.spinner.Tick)
 	}
 
@@ -240,11 +255,11 @@ func buildTitle(width int) string {
 	styleChar := lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Bold(true)
 
 	b.WriteString("\n")
-    if width > 0 {
-        // width is 0 when the app is starting
-        padding := strings.Repeat(" ", (width/2) - 5)
-        b.WriteString(padding)
-    }
+	if width > 0 {
+		// width is 0 when the app is starting
+		padding := strings.Repeat(" ", (width/2)-5)
+		b.WriteString(padding)
+	}
 	b.WriteString(styleChar.Background(lipgloss.Color(c500)).Render("S"))
 	b.WriteString(styleChar.Background(lipgloss.Color(c600)).Render("S"))
 	b.WriteString(styleChar.Background(lipgloss.Color(c700)).Render("E"))
