@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -25,11 +26,14 @@ type Profile struct {
 }
 
 type profileModel struct {
+	client  *Client
 	form    *huh.Form // huh.Form is a tea.Model
-	err     error
 	profile Profile
 	spinner spinner.Model
-	client  *Client
+	height  int
+	help    help.Model
+	keys    KeyMap
+	err     error
 }
 
 func initialModel() profileModel {
@@ -80,6 +84,7 @@ func initialModel() profileModel {
 		),
 	)
 	f.WithTheme(huh.ThemeCatppuccin())
+	f.WithShowHelp(false)
 
 	// spinner
 	s := spinner.New()
@@ -90,6 +95,8 @@ func initialModel() profileModel {
 		form:    f,
 		profile: p,
 		spinner: s,
+		help:    help.New(),
+		keys:    DefaultKeyMap,
 	}
 
 }
@@ -111,6 +118,8 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -118,7 +127,7 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case connectionEstablishedMsg:
 		var newModel sshModel
-		return initSSHModel(msg.client), newModel.Init()
+		return initSSHModel(msg.client, m.height), newModel.Init()
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
@@ -145,14 +154,15 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m profileModel) View() string {
-	var sb strings.Builder
+	var b strings.Builder
 
 	title := buildTitle()
-	sb.WriteString(title)
+	b.WriteString(title)
 
+	// submited, connecting
 	if m.form.State == huh.StateCompleted {
 		if m.err != nil {
-			sb.WriteString(styleConnectionError.Render(m.err.Error()))
+			b.WriteString(styleConnectionError.Render(m.err.Error()))
 		}
 
 		host := m.form.GetString("Host")
@@ -167,7 +177,7 @@ func (m profileModel) View() string {
 		portRender := stylePort.Render(port)
 		userRender := styleUser.Render(user)
 
-		sb.WriteString(
+		b.WriteString(
 			fmt.Sprintf(
 				"%s Connecting to %s:%s as %s...",
 				m.spinner.View(),
@@ -176,10 +186,22 @@ func (m profileModel) View() string {
 				userRender,
 			),
 		)
-		return styleApp.Render(sb.String())
+		b.WriteString("\n")
+
+		// empty lines
+		buildEmptyLine(&b, m.height)
+		// help
+		b.WriteString(m.help.View(m.keys))
+		return styleApp.Render(b.String())
 	}
 
-	return styleApp.Render(sb.String() + m.form.View())
+	// form
+	b.WriteString(m.form.View())
+	// empty lines
+	buildEmptyLine(&b, m.height)
+	// help
+	b.WriteString(m.help.View(m.keys))
+	return styleApp.Render(b.String())
 }
 
 func sshCmd(profile Profile) tea.Cmd {
@@ -191,7 +213,6 @@ func sshCmd(profile Profile) tea.Cmd {
 			)
 		}
 
-		// address := fmt.Sprintf("%s:%s", profile.Host, profile.Port)
 		client, err := NewSSHClient(signer, profile.User, profile.Host, profile.Port)
 		if err != nil {
 			return errMsg(
@@ -205,6 +226,13 @@ func sshCmd(profile Profile) tea.Cmd {
 	}
 }
 
+func buildEmptyLine(b *strings.Builder, height int) {
+	contentHeight := lipgloss.Height(b.String())
+	if contentHeight < height {
+		b.WriteString(strings.Repeat("\n", height-contentHeight))
+	}
+}
+
 func buildTitle() string {
 	sb := strings.Builder{}
 	styleChar := lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Bold(true)
@@ -213,12 +241,11 @@ func buildTitle() string {
 	sb.WriteString(strings.Repeat(" ", 25))
 	sb.WriteString(styleChar.Background(lipgloss.Color(c500)).Render("S"))
 	sb.WriteString(styleChar.Background(lipgloss.Color(c600)).Render("S"))
-	sb.WriteString(styleChar.Background(lipgloss.Color(c700)).Render("H"))
-	sb.WriteString(styleChar.Background(lipgloss.Color(c800)).Render("E"))
-	sb.WriteString(styleChar.Background(lipgloss.Color(c900)).Render("X"))
+	sb.WriteString(styleChar.Background(lipgloss.Color(c700)).Render("E"))
+	sb.WriteString(styleChar.Background(lipgloss.Color(c800)).Render("X"))
 	sb.WriteString("\n")
 	sb.WriteString(styleLine.Render(strings.Repeat("─", 56)))
-	sb.WriteString("\n\n")
+	sb.WriteString("\n")
 
 	return sb.String()
 }

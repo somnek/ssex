@@ -4,6 +4,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/alecthomas/chroma/v2/quick"
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,17 +13,20 @@ import (
 )
 
 type sshModel struct {
-	command string // executed command
 	client  *Client
+	command string // executed command
 	input   textinput.Model
 	output  string
 	spinner spinner.Model
+	height  int
+	help    help.Model
+	keys    KeyMap
 	err     error
 }
 
 type errMsg error
 
-func initSSHModel(client *Client) sshModel {
+func initSSHModel(client *Client, height int) sshModel {
 
 	// input
 	t := textinput.New()
@@ -34,7 +39,10 @@ func initSSHModel(client *Client) sshModel {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(cadetGray))
 
 	return sshModel{
+		keys:    DefaultKeyMap,
+		help:    help.New(),
 		client:  client,
+		height:  height,
 		input:   t,
 		spinner: s,
 	}
@@ -48,7 +56,14 @@ func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+		return m, nil
 	case tea.KeyMsg:
+		// switch {
+		// case key.Matches(msg, m.keys.ToggleHelp):
+		// 	m.help.ShowAll = !m.help.ShowAll
+		// }
 		switch msg.String() {
 		case "X":
 			output, err := m.client.RunCmd("ls -l")
@@ -75,6 +90,7 @@ func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			return m, nil
+
 		}
 
 	case errMsg:
@@ -104,9 +120,14 @@ func (m sshModel) View() string {
 		commandLeft := styleCommand.Render("Command:")
 		b.WriteString(commandLeft + " " + m.command + "\n\n")
 	}
-	b.WriteString(m.output)
+	// new writer
+	ob := strings.Builder{}
+	quick.Highlight(&ob, m.output, "actionscript 3", "terminal16m", "friendly")
+	b.WriteString(ob.String())
 	b.WriteString("\n\n")
 
 	b.WriteString(m.spinner.View())
+	buildEmptyLine(&b, m.height)
+	b.WriteString(m.help.View(m.keys))
 	return styleApp.Render(b.String())
 }

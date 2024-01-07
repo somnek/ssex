@@ -31,7 +31,7 @@ var (
 	styleTitle = lipgloss.NewStyle().
 			Align(lipgloss.Center)
 	styleApp = lipgloss.NewStyle().
-			Padding(1, 2)
+			Padding(0, 1, 0, 1)
 	styleCommand = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("232")).
 			Background(lipgloss.Color(uranianBlue)).
