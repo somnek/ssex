@@ -49,7 +49,7 @@ func initSSHModel(client *Client, height int) sshModel {
 }
 
 func (m sshModel) Init() tea.Cmd {
-	return m.spinner.Tick
+	return tea.Batch(m.spinner.Tick, textinput.Blink)
 }
 
 func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
