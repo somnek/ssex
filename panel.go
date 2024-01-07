@@ -19,6 +19,7 @@ type sshModel struct {
 	output  string
 	spinner spinner.Model
 	height  int
+	width  int
 	help    help.Model
 	keys    KeyMap
 	err     error
@@ -26,7 +27,7 @@ type sshModel struct {
 
 type errMsg error
 
-func initSSHModel(client *Client, height int) sshModel {
+func initSSHModel(client *Client, height, width int) sshModel {
 
 	// input
 	t := textinput.New()
@@ -43,6 +44,7 @@ func initSSHModel(client *Client, height int) sshModel {
 		help:    help.New(),
 		client:  client,
 		height:  height,
+		width:  width,
 		input:   t,
 		spinner: s,
 	}
@@ -58,7 +60,9 @@ func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
+		m.width = msg.Width
 		return m, nil
+
 	case tea.KeyMsg:
 		// switch {
 		// case key.Matches(msg, m.keys.ToggleHelp):
@@ -110,7 +114,7 @@ func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m sshModel) View() string {
 
 	var b strings.Builder
-	title := buildTitle()
+	title := buildTitle(m.width)
 	b.WriteString(title)
 
 	b.WriteString(m.input.View())

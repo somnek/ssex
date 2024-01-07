@@ -31,6 +31,7 @@ type profileModel struct {
 	profile Profile
 	spinner spinner.Model
 	height  int
+	width  int
 	help    help.Model
 	keys    KeyMap
 	err     error
@@ -120,6 +121,7 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
+		m.width = msg.Width
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -127,7 +129,7 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case connectionEstablishedMsg:
 		var newModel sshModel
-		return initSSHModel(msg.client, m.height), newModel.Init()
+		return initSSHModel(msg.client, m.height, m.width), newModel.Init()
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
@@ -156,7 +158,7 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m profileModel) View() string {
 	var b strings.Builder
 
-	title := buildTitle()
+	title := buildTitle(m.width)
 	b.WriteString(title)
 
 	// submited, connecting
@@ -233,19 +235,22 @@ func buildEmptyLine(b *strings.Builder, height int) {
 	}
 }
 
-func buildTitle() string {
-	sb := strings.Builder{}
+func buildTitle(width int) string {
+	b := strings.Builder{}
 	styleChar := lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Bold(true)
-	styleLine := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 
-	sb.WriteString(strings.Repeat(" ", 25))
-	sb.WriteString(styleChar.Background(lipgloss.Color(c500)).Render("S"))
-	sb.WriteString(styleChar.Background(lipgloss.Color(c600)).Render("S"))
-	sb.WriteString(styleChar.Background(lipgloss.Color(c700)).Render("E"))
-	sb.WriteString(styleChar.Background(lipgloss.Color(c800)).Render("X"))
-	sb.WriteString("\n")
-	sb.WriteString(styleLine.Render(strings.Repeat("─", 56)))
-	sb.WriteString("\n")
+	b.WriteString("\n")
+    if width > 0 {
+        // width is 0 when the app is starting
+        padding := strings.Repeat(" ", (width/2) - 5)
+        b.WriteString(padding)
+    }
+	// b.WriteString(strings.Repeat(" ", width/2))
+	b.WriteString(styleChar.Background(lipgloss.Color(c500)).Render("S"))
+	b.WriteString(styleChar.Background(lipgloss.Color(c600)).Render("S"))
+	b.WriteString(styleChar.Background(lipgloss.Color(c700)).Render("E"))
+	b.WriteString(styleChar.Background(lipgloss.Color(c800)).Render("X"))
+	b.WriteString("\n\n")
 
-	return sb.String()
+	return b.String()
 }
