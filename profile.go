@@ -159,7 +159,7 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case connectionEstablishedMsg:
 		var newModel sshModel
-		return initSSHModel(msg.client, m.height, m.width), newModel.Init()
+		return initSSHModel(msg.client, m.profile, m.height, m.width), newModel.Init()
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
@@ -196,6 +196,7 @@ func (m profileModel) View() string {
 
 	title := buildTitle(m.width)
 	b.WriteString(title)
+	b.WriteString("\n")
 
 	// submited, connecting
 	if m.form.State == huh.StateCompleted {
@@ -204,7 +205,7 @@ func (m profileModel) View() string {
 
 			// failed connection
 			styleConnectionError.Width(m.width).ColorWhitespace(false)
-			paddingLen := horizontalPadLenght(errText, m.width)
+			paddingLen := horizontalPadLength(errText, m.width)
 			styleConnectionError.PaddingLeft(paddingLen)
 			b.WriteString(styleConnectionError.Render(errText))
 		} else {
@@ -286,19 +287,19 @@ func buildTitle(width int) string {
 
 	b.WriteString("\n")
 	if width > 0 { // width is 0 when the app is starting
-		padding := strings.Repeat(" ", horizontalPadLenght("SSEX", width))
+		padding := strings.Repeat(" ", horizontalPadLength("SSEX", width))
 		b.WriteString(padding)
 	}
 	b.WriteString(styleChar.Background(lipgloss.Color(c500)).Render("S"))
 	b.WriteString(styleChar.Background(lipgloss.Color(c600)).Render("S"))
 	b.WriteString(styleChar.Background(lipgloss.Color(c700)).Render("E"))
 	b.WriteString(styleChar.Background(lipgloss.Color(c800)).Render("X"))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	return b.String()
 }
 
-func horizontalPadLenght(s string, width int) int {
-	l := (width / 2) - (len(s) / 2) - 1 // -1 is not really needed, but cleaner
+func horizontalPadLength(s string, width int) int {
+	l := (width / 2) - (lipgloss.Width(s) / 2) - 1 // -1 is not really needed, but cleaner
 	return l
 }

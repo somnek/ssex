@@ -46,4 +46,6 @@ var (
 			Foreground(lipgloss.Color(c600))
 	styleUser = styleHost.Copy().
 			Foreground(lipgloss.Color(c700))
+	styleConnStr = lipgloss.NewStyle().
+			Bold(true)
 )
