@@ -45,9 +45,7 @@ type profileModel struct {
 	err     error
 }
 
-func initialModel() profileModel {
-	var p Profile
-
+func initForm(p *Profile) *huh.Form {
 	// form
 	f := huh.NewForm(
 		huh.NewGroup(
@@ -94,11 +92,21 @@ func initialModel() profileModel {
 	)
 	f.WithTheme(huh.ThemeCatppuccin())
 	f.WithShowHelp(false)
+	return f
+}
 
+func initSpinner() spinner.Model {
 	// spinner
 	s := spinner.New()
 	s.Spinner = spinner.Points
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color(c100))
+	return s
+}
+func initialModel() profileModel {
+	var p Profile
+
+	f := initForm(&p)
+	s := initSpinner()
 
 	return profileModel{
 		form:    f,
@@ -118,6 +126,17 @@ func (m profileModel) Init() tea.Cmd {
 	)
 }
 
+func (m profileModel) reset() (tea.Model, tea.Cmd) {
+	profile := Profile{}
+	m.form = initForm(&profile)
+	m.profile = profile
+	m.spinner = initSpinner()
+	m.state = formState
+	m.keys = DefaultKeyMap
+	m.err = nil
+	return m, m.form.Init()
+}
+
 func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -135,6 +154,8 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
+		case key.Matches(msg, m.keys.Cancel):
+			return m.reset()
 		}
 	case connectionEstablishedMsg:
 		var newModel sshModel
@@ -144,7 +165,7 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	case connectionErrorMsg:
 		m.err = msg
-		// ask user to press something to restart form
+		return m, nil
 	}
 
 	// completed
@@ -179,37 +200,46 @@ func (m profileModel) View() string {
 	// submited, connecting
 	if m.form.State == huh.StateCompleted {
 		if m.err != nil {
-			b.WriteString(styleConnectionError.Render(m.err.Error()))
-		}
+			errText := m.err.Error()
 
-		host := m.form.GetString("Host")
-		port := m.form.GetString("Port")
-		user := m.form.GetString("User")
+			// failed connection
+			styleConnectionError.Width(m.width).ColorWhitespace(false)
+			paddingLen := horizontalPadLenght(errText, m.width)
+			styleConnectionError.PaddingLeft(paddingLen)
+			b.WriteString(styleConnectionError.Render(errText))
+		} else {
+			// connecting...
+			host := m.form.GetString("Host")
+			port := m.form.GetString("Port")
+			user := m.form.GetString("User")
 
-		if port == "" {
-			// only for display purpose
-			port = "22"
-		}
-		hostRender := styleHost.Render(host)
-		portRender := stylePort.Render(port)
-		userRender := styleUser.Render(user)
+			if port == "" {
+				// only for display purpose
+				port = "22"
+			}
+			hostRender := styleHost.Render(host)
+			portRender := stylePort.Render(port)
+			userRender := styleUser.Render(user)
 
-		b.WriteString(
-			fmt.Sprintf(
+			// connecting
+			connectingText := fmt.Sprintf(
 				"%s Connecting to %s:%s as %s...",
 				m.spinner.View(),
 				hostRender,
 				portRender,
 				userRender,
-			),
-		)
-		b.WriteString("\n")
+			)
+			b.WriteString(connectingText)
+			b.WriteString("\n")
 
-		// empty lines
-		buildEmptyLine(&b, m.height)
-		// help
-		b.WriteString(m.help.View(m.keys))
-		return styleApp.Render(b.String())
+			// empty line
+			buildEmptyLine(&b, m.height)
+
+			// help
+			b.WriteString(m.help.View(m.keys))
+			return styleApp.Render(b.String())
+		}
+
 	}
 
 	// form
@@ -255,9 +285,8 @@ func buildTitle(width int) string {
 	styleChar := lipgloss.NewStyle().Foreground(lipgloss.Color("7")).Bold(true)
 
 	b.WriteString("\n")
-	if width > 0 {
-		// width is 0 when the app is starting
-		padding := strings.Repeat(" ", (width/2)-5)
+	if width > 0 { // width is 0 when the app is starting
+		padding := strings.Repeat(" ", horizontalPadLenght("SSEX", width))
 		b.WriteString(padding)
 	}
 	b.WriteString(styleChar.Background(lipgloss.Color(c500)).Render("S"))
@@ -267,4 +296,9 @@ func buildTitle(width int) string {
 	b.WriteString("\n\n")
 
 	return b.String()
+}
+
+func horizontalPadLenght(s string, width int) int {
+	l := (width / 2) - (len(s) / 2) - 1 // -1 is not really needed, but cleaner
+	return l
 }
