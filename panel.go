@@ -6,6 +6,7 @@ import (
 
 	"github.com/alecthomas/chroma/quick"
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -30,11 +31,13 @@ func initSSHModel(client *Client, p Profile, height, width int) sshModel {
 	// input
 	t := textinput.New()
 	t.Placeholder = "Enter command"
+	// t.Validate = inputValidator
 	t.Focus()
 
 	keys := DefaultKeyMap
 	keys.Next.Unbind()
 	keys.Back.Unbind()
+	keys.Enter.SetEnabled(true)
 
 	return sshModel{
 		profile: p,
@@ -53,6 +56,7 @@ func (m sshModel) Init() tea.Cmd {
 
 func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	var err error
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -61,25 +65,25 @@ func (m sshModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q", "ctrl+c", "esc":
+		switch {
+		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
 
-		case "enter":
+		case key.Matches(msg, m.keys.Enter):
 			input := m.input.Value()
-			output, err := m.client.RunCmd(input)
-
-			m.output = buildOutput(output, m.height)
-			m.command = input
-			m.input.SetValue("")
-
+			err = inputValidator(input)
 			if err != nil {
-				m.err = errMsg(err)
+				m.err = err
 				return m, nil
 			}
 
-			return m, nil
+			output, _ := m.client.RunCmd(input)
+			m.output = buildOutput(output, m.height)
+			m.command = input
+			m.input.SetValue("")
+			m.err = nil
 
+			return m, nil
 		}
 
 	case errMsg:
@@ -105,24 +109,27 @@ func (m sshModel) View() string {
 	connStr := buildConnStr(m.profile, m.width)
 	b.WriteString(connStr)
 	b.WriteString("\n")
-	// paddingLen := horizontalPadLength(connStr, m.width)
-	// styleConnStr.PaddingLeft(paddingLen)
-	// b.WriteString(styleConnStr.Render(connStr) + "\n")
 
 	// input
 	b.WriteString(m.input.View())
 	b.WriteString("\n\n")
 
-	// command
-	if m.command != "" {
-		commandLeft := styleCommand.Render("Command:")
-		b.WriteString(commandLeft + " " + m.command + "\n\n")
-	}
+	if m.err != nil {
+		// errors
+		errorLeft := styleError.Render("Error:")
+		b.WriteString(errorLeft + " " + m.err.Error() + "\n")
+	} else {
+		// command
+		if m.command != "" {
+			commandLeft := styleCommand.Render("Command:")
+			b.WriteString(commandLeft + " " + m.command + "\n\n")
+		}
 
-	// output
-	if m.output != "" {
-		b.WriteString(m.output)
-		b.WriteString("\n\n")
+		// output
+		if m.output != "" {
+			b.WriteString(m.output)
+			b.WriteString("\n\n")
+		}
 	}
 
 	// pad with empty lines
@@ -139,9 +146,11 @@ func buildOutput(output string, height int) string {
 
 	// trim long output
 	lines := strings.Split(ob.String(), "\n")
-	if len(lines) > height-10 {
+	empties := height - reservedLinesHeight
+
+	if len(lines) > empties {
 		truncText := fmt.Sprintf("... %d more lines truncated ...", len(lines)-(height+10))
-		lines = lines[:height-10]
+		lines = lines[:empties]
 		return strings.Join(lines, "\n") + "\n" + truncText
 	}
 
@@ -171,4 +180,11 @@ func buildConnStr(p Profile, width int) string {
 		styleConnectedStr.PaddingLeft(paddingLen)
 	}
 	return styleConnectedStr.Render(connStr)
+}
+
+func inputValidator(s string) error {
+	if s == "" {
+		return errMsg(fmt.Errorf("command cannot be empty"))
+	}
+	return nil
 }

@@ -58,6 +58,8 @@ func NewSSHClient(signer ssh.Signer, user, host, port string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial: %v", err)
 	}
+
+	defer client.Close()
 	return &Client{client: client}, nil
 }
 

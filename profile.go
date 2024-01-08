@@ -215,7 +215,6 @@ func (m profileModel) View() string {
 			b.WriteString(connectingStr)
 			b.WriteString("\n")
 		}
-
 	}
 
 	// form

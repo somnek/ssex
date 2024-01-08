@@ -24,6 +24,9 @@ const (
 	cordovan    = "#90323D"
 	clared      = "#840032"
 	thulianPink = "#DE639A"
+
+	// occupied by non empty lines
+	reservedLinesHeight = 11
 )
 
 var (
@@ -39,13 +42,17 @@ var (
 			Foreground(lipgloss.Color("232")).
 			Background(lipgloss.Color(uranianBlue)).
 			Bold(true)
+	styleError = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("232")).
+			Background(lipgloss.Color(thulianPink)).
+			Bold(true)
 	styleHost = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(c500)).
+			Foreground(lipgloss.Color(c400)).
 			Bold(true)
 	stylePort = styleHost.Copy().
-			Foreground(lipgloss.Color(c600))
+			Foreground(lipgloss.Color(c500))
 	styleUser = styleHost.Copy().
-			Foreground(lipgloss.Color(c700))
+			Foreground(lipgloss.Color(c600))
 	styleConnectedStr = lipgloss.NewStyle().
 				Bold(true)
 	styleWordConnected = lipgloss.NewStyle().
