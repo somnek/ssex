@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -14,11 +16,22 @@ import (
 )
 
 type state int
-type connectionErrorMsg error
+type connectionErrorMsg struct {
+	err error
+}
+
+type sshResult struct {
+	client *Client
+	err    error
+}
 
 const (
 	formState state = iota
 	connectingState
+)
+
+const (
+	DialTimeout = 10
 )
 
 type connectionEstablishedMsg struct {
@@ -164,13 +177,12 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 	case connectionErrorMsg:
-		m.err = msg
+		m.err = msg.err
 		return m, nil
 	}
 
 	// completed
 	if m.form.State == huh.StateCompleted {
-		// uncessary, since we only use m.profile here
 		m.profile = Profile{
 			Host: m.form.GetString("Host"),
 			Port: m.form.GetString("Port"),
@@ -182,6 +194,7 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.keys.Next.Unbind()
 		m.keys.Clear.Unbind()
 		m.keys.Cancel.SetEnabled(true)
+
 		return m, tea.Batch(sshCmd(m.profile), m.spinner.Tick)
 	}
 
@@ -228,6 +241,7 @@ func (m profileModel) View() string {
 
 func sshCmd(profile Profile) tea.Cmd {
 	return func() tea.Msg {
+		// load private key
 		signer, err := LoadPrivKey()
 		if err != nil {
 			return errMsg(
@@ -235,15 +249,30 @@ func sshCmd(profile Profile) tea.Cmd {
 			)
 		}
 
-		client, err := NewSSHClient(signer, profile.User, profile.Host, profile.Port)
-		if err != nil {
-			return errMsg(
-				fmt.Errorf("failed to create ssh client: %v", err),
-			)
-		}
+		// ssh timeout
+		ctx, cancel := context.WithTimeout(context.Background(), DialTimeout*time.Second)
+		defer cancel()
 
-		return connectionEstablishedMsg{
-			client: client,
+		// create ssh client
+		resultChan := make(chan sshResult)
+		go NewSSHClient(ctx, signer, profile, resultChan)
+
+		// wait for result
+		select {
+		case result := <-resultChan:
+			if result.err != nil {
+				return errMsg(
+					fmt.Errorf("failed to create ssh client: %v", result.err),
+				)
+			} else {
+				return connectionEstablishedMsg{
+					client: result.client,
+				}
+			}
+		case <-ctx.Done():
+			return connectionErrorMsg{
+				err: fmt.Errorf("🔥 connection timeout"),
+			}
 		}
 	}
 }

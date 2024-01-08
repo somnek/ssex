@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -37,7 +38,11 @@ func LoadPrivKey() (ssh.Signer, error) {
 
 // NewSSHClient creates ssh client with ssh.Signer interface
 // and returns Client struct
-func NewSSHClient(signer ssh.Signer, user, host, port string) (*Client, error) {
+func NewSSHClient(ctx context.Context, signer ssh.Signer, p Profile, resultChan chan<- sshResult) {
+	user := p.User
+	host := p.Host
+	port := p.Port
+
 	config := &ssh.ClientConfig{
 		User: user,
 		Auth: []ssh.AuthMethod{
@@ -54,13 +59,18 @@ func NewSSHClient(signer ssh.Signer, user, host, port string) (*Client, error) {
 	}
 	addr := fmt.Sprintf("%s:%s", host, port)
 
-	client, err := ssh.Dial("tcp", addr, config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to dial: %v", err)
+	select {
+	case <-ctx.Done():
+		resultChan <- sshResult{err: ctx.Err()}
+		return
+	default:
+		client, err := ssh.Dial("tcp", addr, config)
+		if err != nil {
+			resultChan <- sshResult{err: fmt.Errorf("failed to dial: %v", err)}
+			return
+		}
+		resultChan <- sshResult{client: &Client{client: client}}
 	}
-
-	defer client.Close()
-	return &Client{client: client}, nil
 }
 
 // Close closes ssh client
@@ -73,6 +83,7 @@ func (c *Client) Close() {
 func (c *Client) RunCmd(command string) (string, error) {
 	session, err := c.client.NewSession()
 	if err != nil {
+		fmt.Println(err)
 		return "", fmt.Errorf("failed to create session: %v", err)
 	}
 	defer session.Close()
