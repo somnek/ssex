@@ -194,6 +194,7 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m profileModel) View() string {
 	var b strings.Builder
 
+	// title
 	title := buildTitle(m.width)
 	b.WriteString(title)
 	b.WriteString("\n")
@@ -210,35 +211,9 @@ func (m profileModel) View() string {
 			b.WriteString(styleConnectionError.Render(errText))
 		} else {
 			// connecting...
-			host := m.form.GetString("Host")
-			port := m.form.GetString("Port")
-			user := m.form.GetString("User")
-
-			if port == "" {
-				// only for display purpose
-				port = "22"
-			}
-			hostRender := styleHost.Render(host)
-			portRender := stylePort.Render(port)
-			userRender := styleUser.Render(user)
-
-			// connecting
-			connectingText := fmt.Sprintf(
-				"%s Connecting to %s:%s as %s...",
-				m.spinner.View(),
-				hostRender,
-				portRender,
-				userRender,
-			)
-			b.WriteString(connectingText)
+			connectingStr := buildConnectingStr(m.form, m.spinner, m.width)
+			b.WriteString(connectingStr)
 			b.WriteString("\n")
-
-			// empty line
-			buildEmptyLine(&b, m.height)
-
-			// help
-			b.WriteString(m.help.View(m.keys))
-			return styleApp.Render(b.String())
 		}
 
 	}
@@ -297,6 +272,37 @@ func buildTitle(width int) string {
 	b.WriteString("\n")
 
 	return b.String()
+}
+
+func buildConnectingStr(f *huh.Form, s spinner.Model, width int) string {
+	host := f.GetString("Host")
+	port := f.GetString("Port")
+	user := f.GetString("User")
+
+	if port == "" {
+		// only for display purpose
+		port = "22"
+	}
+	hostRender := styleHost.Render(host)
+	portRender := stylePort.Render(port)
+	userRender := styleUser.Render(user)
+
+	// connecting
+	connectingStr := fmt.Sprintf(
+		"%s Connecting to %s:%s as %s...",
+		s.View(),
+		hostRender,
+		portRender,
+		userRender,
+	)
+
+	var styleConnectingStr lipgloss.Style
+	// pad left
+	if width > 0 {
+		paddingLen := horizontalPadLength(connectingStr, width)
+		styleConnectingStr = lipgloss.NewStyle().PaddingLeft(paddingLen)
+	}
+	return styleConnectingStr.Render(connectingStr)
 }
 
 func horizontalPadLength(s string, width int) int {

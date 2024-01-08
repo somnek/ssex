@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type sshModel struct {
@@ -156,18 +155,20 @@ func buildConnStr(p Profile, width int) string {
 	hostRender := styleHost.Render(host)
 	portRender := stylePort.Render(port)
 	userRender := styleUser.Render(user)
-	connectedStrRender := lipgloss.NewStyle().Foreground(lipgloss.Color(c200)).Render("Connected")
+	wordConnectedRender := styleWordConnected.Render("Connected")
+	checkMarkRender := styleCheckMark.Render("✔")
 
 	connStr := fmt.Sprintf(
-		"%s to %s:%s as %s",
-		connectedStrRender,
+		"%s %s to %s:%s as %s",
+		checkMarkRender,
+		wordConnectedRender,
 		hostRender,
 		portRender,
 		userRender,
 	)
 	if width > 0 {
 		paddingLen := horizontalPadLength(connStr, width)
-		styleConnStr.PaddingLeft(paddingLen)
+		styleConnectedStr.PaddingLeft(paddingLen)
 	}
-	return styleConnStr.Render(connStr)
+	return styleConnectedStr.Render(connStr)
 }

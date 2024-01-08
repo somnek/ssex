@@ -46,6 +46,11 @@ var (
 			Foreground(lipgloss.Color(c600))
 	styleUser = styleHost.Copy().
 			Foreground(lipgloss.Color(c700))
-	styleConnStr = lipgloss.NewStyle().
+	styleConnectedStr = lipgloss.NewStyle().
+				Bold(true)
+	styleWordConnected = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(c200))
+	styleCheckMark = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(uranianBlue)).
 			Bold(true)
 )
