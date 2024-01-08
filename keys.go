@@ -19,7 +19,7 @@ var DefaultKeyMap = KeyMap{
 	Back:   key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift-tab", "back")),
 	Quit:   key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 	Clear:  key.NewBinding(key.WithKeys("ctrl+u"), key.WithHelp("ctrl+u", "clear")),
-	Cancel: key.NewBinding(key.WithKeys("esc", "q"), key.WithHelp("esc", "cancel"), key.WithDisabled()),
+	Cancel: key.NewBinding(key.WithKeys("esc", "q"), key.WithHelp("esc", "cancel/new connection"), key.WithDisabled()),
 }
 
 // ShortHelp returns a quick help menu.

@@ -21,12 +21,15 @@ const (
 	uranianBlue = "#A5D8FF"
 	cadetGray   = "#8DA7BE"
 	slateGray   = "#717C89"
+	cordovan    = "#90323D"
+	clared      = "#840032"
+	thulianPink = "#DE639A"
 )
 
 var (
 	styleConnectionError = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("15")).
-				Background(lipgloss.Color("1")).
+				Foreground(lipgloss.Color(c50)).
+				Background(lipgloss.Color(cordovan)).
 				Bold(true)
 	styleTitle = lipgloss.NewStyle().
 			Align(lipgloss.Center)
