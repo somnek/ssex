@@ -28,3 +28,4 @@ For now SSEx looks for private key at `~/.ssh/id_rsa`.
 
 - Add support for custom SSH keys
 - Save connection details for future use
+- viewport
