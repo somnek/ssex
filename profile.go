@@ -29,7 +29,7 @@ const (
 )
 
 const (
-	DialTimeout = 5
+	DialTimeout = 15
 )
 
 type connectionEstablishedMsg struct {
