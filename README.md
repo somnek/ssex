@@ -8,7 +8,7 @@ SSEx is a terminal user interface (TUI) that allows you to execute commands on a
 
 ## Installation
 
-You can install the appropriate binary for your operating system by visiting the [Release page]().
+You can install the appropriate binary for your operating system by visiting the [Release page](https://github.com/somnek/ssex/releases/).
 
 **Note**:  
 If you're on macOS, you may need to run:
