@@ -30,10 +30,6 @@ const (
 )
 
 var (
-	styleConnectionError = lipgloss.NewStyle().
-				Foreground(lipgloss.Color(c50)).
-				Background(lipgloss.Color(cordovan)).
-				Bold(true)
 	styleTitle = lipgloss.NewStyle().
 			Align(lipgloss.Center)
 	styleApp = lipgloss.NewStyle().
@@ -60,4 +56,7 @@ var (
 	styleCheckMark = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(uranianBlue)).
 			Bold(true)
+	styleConnectionError = lipgloss.NewStyle().
+				Foreground(lipgloss.Color(thulianPink)).
+				Bold(true)
 )

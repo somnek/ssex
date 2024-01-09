@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -16,9 +17,6 @@ import (
 )
 
 type state int
-type connectionErrorMsg struct {
-	err error
-}
 
 type sshResult struct {
 	client *Client
@@ -31,7 +29,7 @@ const (
 )
 
 const (
-	DialTimeout = 10
+	DialTimeout = 5
 )
 
 type connectionEstablishedMsg struct {
@@ -120,6 +118,8 @@ func initialModel() profileModel {
 
 	f := initForm(&p)
 	s := initSpinner()
+	k := DefaultKeyMap
+	k.New.Unbind()
 
 	return profileModel{
 		form:    f,
@@ -167,8 +167,10 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
-		case key.Matches(msg, m.keys.Cancel):
+		case key.Matches(msg, m.keys.New):
 			return m.reset()
+		case key.Matches(msg, m.keys.Enter):
+			log.Println("enter..")
 		}
 	case connectionEstablishedMsg:
 		var newModel sshModel
@@ -176,32 +178,28 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
-	case connectionErrorMsg:
-		m.err = msg.err
+	case errMsg:
+		m.err = msg
+		m.keys.New.SetEnabled(true)
 		return m, nil
-	}
+	default:
+		// completed
+		if m.form.State == huh.StateCompleted {
+			m.profile = Profile{
+				Host: m.form.GetString("Host"),
+				Port: m.form.GetString("Port"),
+				User: m.form.GetString("User"),
+			}
 
-	// completed
-	if m.form.State == huh.StateCompleted {
-		m.profile = Profile{
-			Host: m.form.GetString("Host"),
-			Port: m.form.GetString("Port"),
-			User: m.form.GetString("User"),
+			m.state = connectingState
+			m.keys.Back.Unbind()
+			m.keys.Next.Unbind()
+			m.keys.Clear.Unbind()
+			return m, tea.Batch(sshCmd(m.profile), m.spinner.Tick)
 		}
-
-		m.state = connectingState
-		m.keys.Back.Unbind()
-		m.keys.Next.Unbind()
-		m.keys.Clear.Unbind()
-		m.keys.Cancel.SetEnabled(true)
-
-		return m, tea.Batch(sshCmd(m.profile), m.spinner.Tick)
 	}
 
-	// spinner
-	var cmdSpinner tea.Cmd
-	m.spinner, cmdSpinner = m.spinner.Update(msg)
-	return m, tea.Batch(cmd, cmdSpinner)
+	return m, cmd
 }
 
 func (m profileModel) View() string {
@@ -216,6 +214,7 @@ func (m profileModel) View() string {
 	if m.form.State == huh.StateCompleted {
 		if m.err != nil {
 			errText := m.err.Error()
+			log.Printf("error %v\n", m.err)
 
 			// failed connection
 			styleConnectionError.Width(m.width).ColorWhitespace(false)
@@ -223,6 +222,7 @@ func (m profileModel) View() string {
 			styleConnectionError.PaddingLeft(paddingLen)
 			b.WriteString(styleConnectionError.Render(errText))
 		} else {
+			log.Println("no error")
 			// connecting...
 			connectingStr := buildConnectingStr(m.form, m.spinner, m.width)
 			b.WriteString(connectingStr)
@@ -240,6 +240,7 @@ func (m profileModel) View() string {
 }
 
 func sshCmd(profile Profile) tea.Cmd {
+	log.Println("....")
 	return func() tea.Msg {
 		// load private key
 		signer, err := LoadPrivKey()
@@ -261,6 +262,7 @@ func sshCmd(profile Profile) tea.Cmd {
 		select {
 		case result := <-resultChan:
 			if result.err != nil {
+				log.Println("error 2")
 				return errMsg(
 					fmt.Errorf("failed to create ssh client: %v", result.err),
 				)
@@ -270,9 +272,7 @@ func sshCmd(profile Profile) tea.Cmd {
 				}
 			}
 		case <-ctx.Done():
-			return connectionErrorMsg{
-				err: fmt.Errorf("🔥 connection timeout"),
-			}
+			return errMsg(fmt.Errorf("🔥 connection timeout"))
 		}
 	}
 }
