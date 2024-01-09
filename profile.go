@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -169,8 +168,6 @@ func (m profileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, m.keys.New):
 			return m.reset()
-		case key.Matches(msg, m.keys.Enter):
-			log.Println("enter..")
 		}
 	case connectionEstablishedMsg:
 		var newModel sshModel
@@ -214,7 +211,6 @@ func (m profileModel) View() string {
 	if m.form.State == huh.StateCompleted {
 		if m.err != nil {
 			errText := m.err.Error()
-			log.Printf("error %v\n", m.err)
 
 			// failed connection
 			styleConnectionError.Width(m.width).ColorWhitespace(false)
@@ -222,7 +218,6 @@ func (m profileModel) View() string {
 			styleConnectionError.PaddingLeft(paddingLen)
 			b.WriteString(styleConnectionError.Render(errText))
 		} else {
-			log.Println("no error")
 			// connecting...
 			connectingStr := buildConnectingStr(m.form, m.spinner, m.width)
 			b.WriteString(connectingStr)
@@ -240,7 +235,6 @@ func (m profileModel) View() string {
 }
 
 func sshCmd(profile Profile) tea.Cmd {
-	log.Println("....")
 	return func() tea.Msg {
 		// load private key
 		signer, err := LoadPrivKey()
@@ -262,7 +256,6 @@ func sshCmd(profile Profile) tea.Cmd {
 		select {
 		case result := <-resultChan:
 			if result.err != nil {
-				log.Println("error 2")
 				return errMsg(
 					fmt.Errorf("failed to create ssh client: %v", result.err),
 				)

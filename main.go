@@ -2,18 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("error loading .env file", err)
-	}
 
 	// dbug
 	if len(os.Getenv("DEBUG")) > 0 {
