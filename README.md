@@ -3,7 +3,7 @@
 SSEx is a terminal user interface (TUI) that allows you to execute commands on a remote server through SSH. 🪡
 
 <p align="center">
-  <img src="./assets/demo.gif") width="500"/>
+  <img src="./assets/demo.gif") width="700"/>
 </p>
 
 ## Installation
@@ -14,7 +14,7 @@ You can install the appropriate binary for your operating system by visiting the
 If you're on macOS, you may need to run:
 
 ```sh
-xattr -c ./ssex_Darwin_x86_64.tar.gz
+xattr -c ./ssex\ Darwin x86\ 64.tar.gz
 ```
 
 to (to avoid "unknown developer" warning)
